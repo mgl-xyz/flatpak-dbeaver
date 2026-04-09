@@ -1,0 +1,122 @@
+app-id: io.dbeaver.DBeaverCommunity
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+
+# Upstream moved to Open JDK 21
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.openjdk21
+
+command: dbeaver-wrapper
+
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=ssh-auth
+  - --share=network
+  - --socket=pulseaudio
+  - --device=dri
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.FileManager1
+  - --talk-name=org.freedesktop.secrets
+  - --filesystem=home
+  - --env=PATH=/app/clients/bin:/app/jre/bin:/usr/bin:/app/bin
+
+add-extensions:
+  io.dbeaver.DBeaverCommunity.Client:
+    directory: clients
+    add-ld-path: lib
+    merge-dirs: bin
+    subdirectories: true
+    no-autodownload: true
+    autodelete: true
+
+modules:
+  - name: openjdk
+    build-options:
+      no-debuginfo: true
+    buildsystem: simple
+    build-commands:
+      - /usr/lib/sdk/openjdk21/install.sh
+
+  - name: dbeaver-client
+    build-options:
+      no-debuginfo: true
+    buildsystem: simple
+    build-commands:
+      - tar -xf dbeaver.tar.gz
+      - rm -rf ./dbeaver/jre
+      - cp -r ./dbeaver /app/bin
+      - install -d /app/clients/bin
+      - install -Dm644 ./dbeaver/dbeaver-ce.desktop /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=WMCLASS /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=Categories /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=Categories --set-value='IDE;Development;' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=Keywords /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=Keywords --set-value='Database;SQL;IDE;JDBC;ODBC;MySQL;PostgreSQL;'
+        /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=GenericName /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=GenericName --set-value='Database Manager' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=MimeType /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=MimeType --set-value='application/sql;' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=Path /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --remove-key=Exec /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=Exec --set-value='/app/bin/dbeaver' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-icon=io.dbeaver.DBeaverCommunity /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - desktop-file-edit --set-key=Name --set-value='DBeaver CE' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+      - install -Dm644 io.dbeaver.DBeaverCommunity.appdata.xml /app/share/metainfo/io.dbeaver.DBeaverCommunity.appdata.xml
+        # Install the wrapper script and update desktop file
+      - install -Dm755 dbeaver-wrapper /app/bin/dbeaver-wrapper
+      - desktop-file-edit --set-key=Exec --set-value='/app/bin/dbeaver-wrapper' /app/share/applications/io.dbeaver.DBeaverCommunity.desktop
+        # Icons
+      - tar -xf sources.tar.gz --strip-components=1
+      - for icon_size in 16 32 48 64 128 256 512; do install -d /app/share/icons/hicolor/${icon_size}x${icon_size}/apps;
+        install -m644 product/community/icons-sources/icon_${icon_size}x${icon_size}.png
+        /app/share/icons/hicolor/${icon_size}x${icon_size}/apps/io.dbeaver.DBeaverCommunity.png;
+        done
+    cleanup:
+      - /bin/dbeaver-ce.desktop
+      - /bin/.eclipseproduct
+      - /bin/icon.xpm
+      - /bin/dbeaver.png
+      - /bin/readme
+      - /bin/readme.txt
+    sources:
+      - type: file
+        path: run.sh
+        dest-filename: dbeaver-wrapper
+        # Wrapper script
+      - type: file
+        path: io.dbeaver.DBeaverCommunity.appdata.xml
+        # This file contains all the icons
+      - type: file
+        dest-filename: sources.tar.gz
+        url: https://github.com/dbeaver/dbeaver/archive/refs/tags/26.0.1.tar.gz
+        sha256: b735af3ddac9b461afca848aed88399fdc3a3974d7ec82005aef3779ec096803
+        x-checker-data:
+          type: anitya
+          project-id: 16276
+          url-template: https://github.com/dbeaver/dbeaver/archive/refs/tags/$version.tar.gz
+        # Main application, x86
+      - type: file
+        dest-filename: dbeaver.tar.gz
+        only-arches:
+          - x86_64
+        url: https://github.com/dbeaver/dbeaver/releases/download/26.0.1/dbeaver-ce-26.0.1-linux-x86_64.tar.gz
+        sha256: b664fad8cd8dbef4ac05629b453d224d575056e06e3ec0ee0c1b55b6bec528f5
+        x-checker-data:
+          type: anitya
+          project-id: 16276
+          url-template: https://github.com/dbeaver/dbeaver/releases/download/$version/dbeaver-ce-$version-linux-x86_64.tar.gz
+        # Main application, ARM
+      - type: file
+        dest-filename: dbeaver.tar.gz
+        only-arches:
+          - aarch64
+        url: https://github.com/dbeaver/dbeaver/releases/download/26.0.1/dbeaver-ce-26.0.1-linux-aarch64.tar.gz
+        sha256: 58bee93b49794d9125d94afc422ab0ff9640291e226a837ccb1a46ef0b4f99db
+        x-checker-data:
+          type: anitya
+          project-id: 16276
+          url-template: https://github.com/dbeaver/dbeaver/releases/download/$version/dbeaver-ce-$version-linux-aarch64.tar.gz
